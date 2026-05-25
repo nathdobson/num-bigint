@@ -1,7 +1,7 @@
 #[allow(deprecated, unused_imports)]
 use alloc::borrow::Cow;
 use alloc::string::String;
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::default::Default;
 use core::hash::{Hash, Hasher};
@@ -14,6 +14,7 @@ use core::str::{self, FromStr};
 use core::{cmp, fmt, mem};
 use core::{f32, f64};
 use core::{u32, u64, u8};
+use fallible_vec::{try_vec, FallibleVec, SliceExt, TryClone, TryCloneError};
 
 #[cfg(feature = "serde")]
 use serde;
@@ -93,6 +94,14 @@ use crate::UsizePromotion;
 #[derive(Clone, Debug)]
 pub struct BigUint {
     pub(crate) data: SmallVec<[BigDigit; VEC_SIZE]>,
+}
+
+impl TryClone for BigUint {
+    fn try_clone(&self) -> Result<Self, TryCloneError> {
+        Ok(BigUint {
+            data: self.data.try_clone()?,
+        })
+    }
 }
 
 impl PartialEq for BigUint {
@@ -300,7 +309,7 @@ impl Num for BigUint {
         }
 
         // First normalize all characters to plain digit values
-        let mut v = Vec::with_capacity(s.len());
+        let mut v = Vec::try_with_capacity(s.len()).expect("TODO");
         for b in s.bytes() {
             let d = match b {
                 b'0'..=b'9' => b - b'0',
@@ -310,7 +319,7 @@ impl Num for BigUint {
                 _ => u8::MAX,
             };
             if d < radix as u8 {
-                v.push(d);
+                v.try_push(d).expect("TODO");
             } else {
                 return Err(ParseBigIntError::invalid());
             }
@@ -487,7 +496,7 @@ impl Zero for BigUint {
 impl One for BigUint {
     #[inline]
     fn one() -> BigUint {
-        BigUint::new(vec![1])
+        BigUint::new(try_vec![1].expect("TODO"))
     }
 
     #[inline]
@@ -1911,18 +1920,18 @@ fn to_bitwise_digits_le(u: &BigUint, bits: usize) -> Vec<u8> {
     let mask: BigDigit = (1 << bits) - 1;
     let digits_per_big_digit = big_digit::BITS / bits;
     let digits = (u.bits() + bits - 1) / bits;
-    let mut res = Vec::with_capacity(digits);
+    let mut res = Vec::try_with_capacity(digits).expect("TODO");
 
     for mut r in u.data[..last_i].iter().cloned() {
         for _ in 0..digits_per_big_digit {
-            res.push((r & mask) as u8);
+            res.try_push((r & mask) as u8).expect("TODO");
             r >>= bits;
         }
     }
 
     let mut r = u.data[last_i];
     while r != 0 {
-        res.push((r & mask) as u8);
+        res.try_push((r & mask) as u8).expect("TODO");
         r >>= bits;
     }
 
@@ -1935,7 +1944,7 @@ fn to_inexact_bitwise_digits_le(u: &BigUint, bits: usize) -> Vec<u8> {
 
     let mask: BigDigit = (1 << bits) - 1;
     let digits = (u.bits() + bits - 1) / bits;
-    let mut res = Vec::with_capacity(digits);
+    let mut res = Vec::try_with_capacity(digits).expect("TODO");
 
     let mut r = 0;
     let mut rbits = 0;
@@ -1945,7 +1954,7 @@ fn to_inexact_bitwise_digits_le(u: &BigUint, bits: usize) -> Vec<u8> {
         rbits += big_digit::BITS;
 
         while rbits >= bits {
-            res.push((r & mask) as u8);
+            res.try_push((r & mask) as u8).expect("TODO");
             r >>= bits;
 
             // r had more bits than it could fit - grab the bits we lost
@@ -1958,7 +1967,7 @@ fn to_inexact_bitwise_digits_le(u: &BigUint, bits: usize) -> Vec<u8> {
     }
 
     if rbits != 0 {
-        res.push(r as u8);
+        res.try_push(r as u8).expect("TODO");
     }
 
     while let Some(&0) = res.last() {
@@ -1976,7 +1985,7 @@ fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
     // Estimate how big the result will be, so we can pre-allocate it.
     let bits = ilog2(radix);
     let radix_digits = idiv_ceil(u.bits(), bits);
-    let mut res = Vec::with_capacity(radix_digits as usize);
+    let mut res = Vec::try_with_capacity(radix_digits as usize).expect("TODO");
     let mut digits = u.clone();
 
     let (base, power) = get_radix_base(radix);
@@ -1985,7 +1994,7 @@ fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
     while digits.data.len() > 1 {
         let (q, mut r) = div_rem_digit(digits, base);
         for _ in 0..power {
-            res.push((r % radix) as u8);
+            res.try_push((r % radix) as u8).expect("TODO");
             r /= radix;
         }
         digits = q;
@@ -1993,7 +2002,7 @@ fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
 
     let mut r = digits.data[0];
     while r != 0 {
-        res.push((r % radix) as u8);
+        res.try_push((r % radix) as u8).expect("TODO");
         r /= radix;
     }
 
@@ -2002,7 +2011,7 @@ fn to_radix_digits_le(u: &BigUint, radix: u32) -> Vec<u8> {
 
 pub fn to_radix_le(u: &BigUint, radix: u32) -> Vec<u8> {
     if u.is_zero() {
-        vec![0]
+        try_vec![0].expect("TODO")
     } else if radix.is_power_of_two() {
         // Powers of two can use bitwise masks and shifting instead of division
         let bits = ilog2(radix);
@@ -2024,7 +2033,7 @@ pub fn to_str_radix_reversed(u: &BigUint, radix: u32) -> Vec<u8> {
     assert!(2 <= radix && radix <= 36, "The radix must be within 2...36");
 
     if u.is_zero() {
-        return vec![b'0'];
+        return try_vec![b'0'].expect("TODO");
     }
 
     let mut res = to_radix_le(u, radix);
@@ -2090,7 +2099,7 @@ impl BigUint {
     /// The digits are in little-endian base 2<sup>32</sup>.
     #[inline]
     pub fn from_slice(slice: &[u32]) -> BigUint {
-        BigUint::new(slice.to_vec())
+        BigUint::new(slice.try_to_vec().expect("TODO"))
     }
 
     /// Creates and initializes a `BigUint`.
@@ -2153,7 +2162,7 @@ impl BigUint {
         if bytes.is_empty() {
             Zero::zero()
         } else {
-            let mut v = bytes.to_vec();
+            let mut v = bytes.try_to_vec().expect("TODO");
             v.reverse();
             BigUint::from_bytes_le(&*v)
         }
@@ -2223,7 +2232,7 @@ impl BigUint {
         let res = if radix.is_power_of_two() {
             // Powers of two can use bitwise masks and shifting instead of multiplication
             let bits = ilog2(radix);
-            let mut v = Vec::from(buf);
+            let mut v = buf.try_to_vec().expect("TODO");
             v.reverse();
             if big_digit::BITS % bits == 0 {
                 from_bitwise_digits_le(&v, bits)
@@ -2272,7 +2281,7 @@ impl BigUint {
                 from_inexact_bitwise_digits_le(buf, bits)
             }
         } else {
-            let mut v = Vec::from(buf);
+            let mut v = buf.try_to_vec().expect("TODO");
             v.reverse();
             from_radix_digits_be(&v, radix)
         };
@@ -2310,7 +2319,7 @@ impl BigUint {
     #[inline]
     pub fn to_bytes_le(&self) -> Vec<u8> {
         if self.is_zero() {
-            vec![0]
+            try_vec![0].expect("TODO")
         } else {
             to_bitwise_digits_le(self, 8)
         }

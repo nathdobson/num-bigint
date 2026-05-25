@@ -101,7 +101,9 @@
 
 #![doc(html_root_url = "https://docs.rs/num-bigint/0.2")]
 #![no_std]
-
+#![feature(allocator_api)]
+#![feature(try_with_capacity)]
+#![deny(unused_must_use)]
 extern crate alloc;
 
 #[cfg(feature = "std")]

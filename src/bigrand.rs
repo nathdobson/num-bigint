@@ -7,6 +7,7 @@ use rand::prelude::*;
 use crate::BigInt;
 use crate::BigUint;
 use crate::Sign::*;
+use fallible_vec::try_vec;
 
 use crate::big_digit::BigDigit;
 use crate::bigint::{into_magnitude, magnitude};
@@ -316,7 +317,7 @@ impl<R: Rng + ?Sized> RandPrime for R {
         }
 
         let bytes_len = (bit_size + 7) / 8;
-        let mut bytes = alloc::vec![0u8; bytes_len];
+        let mut bytes = try_vec![0u8; bytes_len].expect("TODO");
 
         loop {
             self.fill_bytes(&mut bytes);

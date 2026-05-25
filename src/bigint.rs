@@ -16,7 +16,7 @@ use core::{fmt, mem};
 #[cfg(has_i128)]
 use core::{i128, u128};
 use core::{i64, u64};
-
+use fallible_vec::{FallibleVec, SliceExt, TryClone, TryCloneError};
 #[cfg(feature = "serde")]
 use serde;
 
@@ -132,6 +132,15 @@ impl<'de> serde::Deserialize<'de> for Sign {
 pub struct BigInt {
     pub(crate) sign: Sign,
     pub(crate) data: BigUint,
+}
+
+impl TryClone for BigInt {
+    fn try_clone(&self) -> Result<Self, TryCloneError> {
+        Ok(BigInt {
+            sign: self.sign.clone(),
+            data: self.data.try_clone()?,
+        })
+    }
 }
 
 /// Return the magnitude of a `BigInt`.
@@ -2817,7 +2826,7 @@ impl BigInt {
 
         if sign == Sign::Minus {
             // two's-complement the content to retrieve the magnitude
-            let mut digits = Vec::from(digits);
+            let mut digits = digits.try_to_vec().expect("TODO");
             twos_complement_be(&mut digits);
             BigInt::from_biguint(sign, BigUint::from_bytes_be(&*digits))
         } else {
@@ -2838,7 +2847,7 @@ impl BigInt {
 
         if sign == Sign::Minus {
             // two's-complement the content to retrieve the magnitude
-            let mut digits = Vec::from(digits);
+            let mut digits = digits.try_to_vec().expect("TODO");
             twos_complement_le(&mut digits);
             BigInt::from_biguint(sign, BigUint::from_bytes_le(&*digits))
         } else {
@@ -2954,7 +2963,7 @@ impl BigInt {
                 && self.sign == Sign::Minus)
         {
             // msb used by magnitude, extend by 1 byte
-            bytes.insert(0, 0);
+            bytes.try_insert(0, 0).expect("TODO");
         }
         if self.sign == Sign::Minus {
             twos_complement_be(&mut bytes);
@@ -2982,7 +2991,7 @@ impl BigInt {
                 && self.sign == Sign::Minus)
         {
             // msb used by magnitude, extend by 1 byte
-            bytes.push(0);
+            bytes.try_push(0).expect("TODO");
         }
         if self.sign == Sign::Minus {
             twos_complement_le(&mut bytes);
@@ -3006,7 +3015,7 @@ impl BigInt {
         let mut v = to_str_radix_reversed(&self.data, radix);
 
         if self.is_negative() {
-            v.push(b'-');
+            v.try_push(b'-').expect("TODO");
         }
 
         v.reverse();

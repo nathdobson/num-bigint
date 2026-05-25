@@ -69,6 +69,9 @@ default-features = false
 # See https://github.com/rust-lang-nursery/lazy-static.rs/issues/150
 features = ["spin_no_std"]
 
+[dependencies.fallible_vec]
+path="../rust_fallible_vec"
+
 [dev-dependencies]
 rand_chacha = "0.3"
 rand_xorshift = "0.3"

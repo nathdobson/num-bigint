@@ -2,6 +2,7 @@
 
 use alloc::vec::Vec;
 use core::ops::Shl;
+use fallible_vec::FallibleVec;
 use num_traits::{One, Zero};
 
 use crate::big_digit::{self, BigDigit, DoubleBigDigit, SignedDoubleBigDigit};
@@ -155,18 +156,18 @@ pub fn monty_modpow(x: &BigUint, y: &BigUint, m: &BigUint) -> BigUint {
 
     let n = 4;
     // powers[i] contains x^i
-    let mut powers = Vec::with_capacity(1 << n);
+    let mut powers = Vec::try_with_capacity(1 << n).expect("TODO");
 
     let mut v1 = BigUint::zero();
     montgomery(&mut v1, &one, &rr, m, mr.n0inv, num_words);
-    powers.push(v1);
+    powers.try_push(v1).expect("TODO");
     let mut v2 = BigUint::zero();
     montgomery(&mut v2, &x, &rr, m, mr.n0inv, num_words);
-    powers.push(v2);
+    powers.try_push(v2).expect("TODO");
     for i in 2..1 << n {
         let mut r = BigUint::zero();
         montgomery(&mut r, &powers[i - 1], &powers[1], m, mr.n0inv, num_words);
-        powers.push(r);
+        powers.try_push(r).expect("TODO");
     }
 
     // initialize z = 1 (Montgomery 1)

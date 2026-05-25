@@ -1,7 +1,6 @@
 // https://github.com/RustCrypto/RSA/blob/master/src/prime.rs
 //! Implements probabilistic prime checkers.
 
-use alloc::vec;
 use integer::Integer;
 use num_traits::{FromPrimitive, One, ToPrimitive, Zero};
 use rand::rngs::StdRng;
@@ -12,6 +11,7 @@ use crate::big_digit;
 use crate::bigrand::RandBigInt;
 use crate::Sign::Plus;
 use crate::{BigInt, BigUint, IntoBigUint};
+use fallible_vec::try_vec;
 
 lazy_static! {
     pub(crate) static ref BIG_1: BigUint = BigUint::one();
@@ -136,7 +136,7 @@ pub fn next_prime(n: &BigUint) -> BigUint {
     };
 
     // Compute the residues modulo small odd primes
-    let mut moduli = vec![BigUint::zero(); prime_limit];
+    let mut moduli = try_vec![BigUint::zero(); prime_limit].expect("TODO");
 
     'outer: loop {
         let mut prime = 3;
